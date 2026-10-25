@@ -1,20 +1,22 @@
 let currentUser = null;
-let documents = JSON.parse(localStorage.getItem('faculty_docs')) || [];
+
+// Kesh muammolarini oldini olish uchun v2 kalitlari
+let documents = JSON.parse(localStorage.getItem('faculty_docs_v2')) || [];
 
 let usersList = [];
 try {
-    usersList = JSON.parse(localStorage.getItem('faculty_users')) || [
-        { fullname: 'Bosh Admin', position: 'Dekan o`rinbosari', username: '', password: '', role: 'admin', phone: '+998 90 123 45 67', telegram: '@admin_fakultet', instagram: '@samdvmchbu', photo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' },
+    usersList = JSON.parse(localStorage.getItem('faculty_users_v2')) || [
+        { fullname: 'Bosh Admin', position: 'Dekan o`rinbosari', username: 'admin', password: '123', role: 'admin', phone: '+998 90 123 45 67', telegram: '@admin_fakultet', instagram: '@samdvmchbu', photo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' },
         { fullname: 'Foydalanuvchi', position: 'Inspektor', username: 'user', password: '123', role: 'user', phone: '+998 91 987 65 43', telegram: '@user_fakultet', instagram: '', photo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }
     ];
 } catch (e) {
     usersList = [
-        { fullname: 'Bosh Admin', position: 'Dekan o`rinbosari', username: '', password: '', role: 'admin', phone: '+998 90 123 45 67', telegram: '@admin_fakultet', instagram: '@samdvmchbu', photo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' },
+        { fullname: 'Bosh Admin', position: 'Dekan o`rinbosari', username: 'admin', password: '123', role: 'admin', phone: '+998 90 123 45 67', telegram: '@admin_fakultet', instagram: '@samdvmchbu', photo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' },
         { fullname: 'Foydalanuvchi', position: 'Inspektor', username: 'user', password: '123', role: 'user', phone: '+998 91 987 65 43', telegram: '@user_fakultet', instagram: '', photo: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }
     ];
 }
 
-// TOAST BILDIRISHNOMA FUNKSIYASI
+// TOAST BILDIRISHNOMA
 function showToast(message, type = 'success') {
     const container = document.getElementById('toast-container');
     if (!container) return;
@@ -30,7 +32,7 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 3000);
 }
 
-// STATISTIKANI YANGILASH
+// STATISTIKA
 function updateDashboardStats() {
     const totalDocs = document.getElementById('stat-total-docs');
     const studentDocs = document.getElementById('stat-student-docs');
@@ -45,8 +47,8 @@ function updateDashboardStats() {
 
 // 30 MINUTLIK SEANS
 document.addEventListener('DOMContentLoaded', () => {
-    const savedUser = localStorage.getItem('faculty_current_user');
-    const loginTime = localStorage.getItem('faculty_login_time');
+    const savedUser = localStorage.getItem('faculty_current_user_v2');
+    const loginTime = localStorage.getItem('faculty_login_time_v2');
     const now = new Date().getTime();
 
     if (savedUser && loginTime && (now - loginTime < 30 * 60 * 1000)) {
@@ -55,7 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
             startAppSession();
             return;
         } catch (e) {
-            localStorage.clear();
+            localStorage.removeItem('faculty_current_user_v2');
+            localStorage.removeItem('faculty_login_time_v2');
         }
     }
     
@@ -75,7 +78,7 @@ function switchTab(tabId) {
     if (targetSec) targetSec.classList.remove('hidden');
 
     const activeBtn = document.getElementById(`tab-btn-${tabId}`);
-    if(activeBtn) {
+    if (activeBtn) {
         activeBtn.classList.add('bg-blue-600', 'text-white');
         activeBtn.classList.remove('text-slate-400', 'hover:bg-slate-800');
     }
@@ -85,16 +88,16 @@ function switchTab(tabId) {
     }
 }
 
-// LOGIN QILISH
+// LOGIN QILISH (Kichik harfga o'tkazish avtomatlashtirilgan)
 const loginForm = document.getElementById('login-form');
 if (loginForm) {
     loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const u = document.getElementById('username').value.trim();
+        const u = document.getElementById('username').value.trim().toLowerCase();
         const p = document.getElementById('password').value.trim();
         const errorDiv = document.getElementById('login-error');
         
-        const user = usersList.find(x => x.username === u && x.password === p);
+        const user = usersList.find(x => x.username.toLowerCase() === u && x.password === p);
         if (!user) {
             if (errorDiv) errorDiv.classList.remove('hidden');
             return;
@@ -102,8 +105,11 @@ if (loginForm) {
 
         if (errorDiv) errorDiv.classList.add('hidden');
         currentUser = user;
-        localStorage.setItem('faculty_current_user', JSON.stringify(currentUser));
-        localStorage.setItem('faculty_login_time', new Date().getTime());
+        // Asl logini xavfsiz saqlab qo'yamiz
+        currentUser.originalUsername = user.username;
+
+        localStorage.setItem('faculty_current_user_v2', JSON.stringify(currentUser));
+        localStorage.setItem('faculty_login_time_v2', new Date().getTime());
 
         startAppSession();
         showToast(`Xush kelibsiz, ${currentUser.fullname}!`);
@@ -116,6 +122,10 @@ function startAppSession() {
     
     if (loginScreen) loginScreen.classList.add('hidden');
     if (appContent) appContent.classList.remove('hidden');
+
+    if (!currentUser.originalUsername) {
+        currentUser.originalUsername = currentUser.username;
+    }
 
     updateHeaderUserUI();
 
@@ -145,33 +155,27 @@ function updateHeaderUserUI() {
     if (avatar) avatar.src = currentUser.photo || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
 }
 
+// CHIQISH
 const logoutBtn = document.getElementById('logout-btn');
 if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
-        localStorage.removeItem('faculty_current_user');
-        localStorage.removeItem('faculty_login_time');
+        localStorage.removeItem('faculty_current_user_v2');
+        localStorage.removeItem('faculty_login_time_v2');
         location.reload();
     });
 }
 
-// SHAXSIY PROFILNI TIKLASH VA SAQLASH
+// SHAXSIY PROFILNI YUKLASH VA YANGILASH (LOGIN & PAROL O'ZGARTIRISH)
 function loadMyProfileData() {
     if (!currentUser) return;
-    const fields = {
-        'my-fullname': currentUser.fullname,
-        'my-position': currentUser.position,
-        'my-phone': currentUser.phone,
-        'my-telegram': currentUser.telegram,
-        'my-instagram': currentUser.instagram,
-        'my-username': currentUser.username,
-        'my-password': currentUser.password
-    };
-    for (const [id, val] of Object.entries(fields)) {
-        const el = document.getElementById(id);
-        if (el) el.value = val || '';
-    }
-    const preview = document.getElementById('profile-avatar-preview');
-    if (preview) preview.src = currentUser.photo || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+    document.getElementById('my-fullname').value = currentUser.fullname || '';
+    document.getElementById('my-position').value = currentUser.position || '';
+    document.getElementById('my-phone').value = currentUser.phone || '';
+    document.getElementById('my-telegram').value = currentUser.telegram || '';
+    document.getElementById('my-instagram').value = currentUser.instagram || '';
+    document.getElementById('my-username').value = currentUser.username || '';
+    document.getElementById('my-password').value = currentUser.password || '';
+    document.getElementById('profile-avatar-preview').src = currentUser.photo || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
 }
 
 const myProfileForm = document.getElementById('my-profile-form');
@@ -195,23 +199,29 @@ if (myProfileForm) {
         currentUser.phone = document.getElementById('my-phone').value;
         currentUser.telegram = document.getElementById('my-telegram').value;
         currentUser.instagram = document.getElementById('my-instagram').value;
-        currentUser.username = document.getElementById('my-username').value;
+        currentUser.username = document.getElementById('my-username').value.trim().toLowerCase();
         currentUser.password = document.getElementById('my-password').value;
         currentUser.photo = photoBase64;
 
-        const idx = usersList.findIndex(u => u.username === currentUser.username);
+        // Eski logini bo'yicha bazadan topib yangilaymiz (dublikat bo'lmaydi)
+        const searchKey = currentUser.originalUsername || currentUser.username;
+        const idx = usersList.findIndex(u => u.username.toLowerCase() === searchKey.toLowerCase());
+        
         if (idx !== -1) {
             usersList[idx] = currentUser;
         } else {
             usersList.push(currentUser);
         }
 
-        localStorage.setItem('faculty_users', JSON.stringify(usersList));
-        localStorage.setItem('faculty_current_user', JSON.stringify(currentUser));
+        currentUser.originalUsername = currentUser.username;
+
+        localStorage.setItem('faculty_users_v2', JSON.stringify(usersList));
+        localStorage.setItem('faculty_current_user_v2', JSON.stringify(currentUser));
+        
         updateHeaderUserUI();
         renderUsers();
         updateDashboardStats();
-        showToast("Shaxsiy profilingiz yangilandi!");
+        showToast("Shaxsiy profilingiz, login va parolingiz yangilandi!");
     });
 }
 
@@ -260,7 +270,7 @@ if (addDocumentForm) {
             showToast("Yangi hujjat saqlandi!");
         }
 
-        localStorage.setItem('faculty_docs', JSON.stringify(documents));
+        localStorage.setItem('faculty_docs_v2', JSON.stringify(documents));
         e.target.reset();
         document.getElementById('edit-doc-id').value = '';
         document.getElementById('doc-form-title').innerHTML = `<i class="fa-solid fa-file-circle-plus text-blue-400 mr-2"></i>Yangi Hujjat Kiritish`;
@@ -334,7 +344,7 @@ function editDoc(id) {
 function deleteDoc(id) {
     if (confirm("Hujjatni o'chirishni xohlaysizmi?")) {
         documents = documents.filter(d => d.id != id);
-        localStorage.setItem('faculty_docs', JSON.stringify(documents));
+        localStorage.setItem('faculty_docs_v2', JSON.stringify(documents));
         renderDocuments();
         updateDashboardStats();
         showToast("Hujjat o'chirildi!", "error");
@@ -373,7 +383,7 @@ if (addUserForm) {
             phone: document.getElementById('new-user-phone').value,
             telegram: document.getElementById('new-user-telegram').value,
             instagram: document.getElementById('new-user-instagram').value,
-            username: document.getElementById('new-user-username').value,
+            username: document.getElementById('new-user-username').value.trim().toLowerCase(),
             password: document.getElementById('new-user-password').value,
             role: document.getElementById('new-user-role').value,
             photo: photoBase64
@@ -387,7 +397,7 @@ if (addUserForm) {
             showToast("Yangi foydalanuvchi qo'shildi!");
         }
 
-        localStorage.setItem('faculty_users', JSON.stringify(usersList));
+        localStorage.setItem('faculty_users_v2', JSON.stringify(usersList));
         e.target.reset();
         document.getElementById('edit-user-index').value = '-1';
         switchTab('users-list');
@@ -451,7 +461,7 @@ function deleteUser(idx) {
     }
     if (confirm("Foydalanuvchini o'chirishni xohlaysizmi?")) {
         usersList.splice(idx, 1);
-        localStorage.setItem('faculty_users', JSON.stringify(usersList));
+        localStorage.setItem('faculty_users_v2', JSON.stringify(usersList));
         renderUsers();
         updateDashboardStats();
         showToast("Foydalanuvchi o'chirildi!", "error");
@@ -465,7 +475,7 @@ function cancelUserEdit() {
     switchTab('users-list');
 }
 
-// MUKAMMAL EXCEL EXPORT
+// EXCEL EXPORT
 const exportExcelBtn = document.getElementById('export-excel-btn');
 if (exportExcelBtn) {
     exportExcelBtn.addEventListener('click', () => {
@@ -570,7 +580,7 @@ if (closePdfBtn) {
     closePdfBtn.addEventListener('click', () => document.getElementById('pdf-modal').classList.add('hidden'));
 }
 
-// ICHKI SMART AI YORDAMCHI
+// AI YORDAMCHI
 const openAiBtn = document.getElementById('open-ai-btn');
 if (openAiBtn) {
     openAiBtn.addEventListener('click', () => document.getElementById('ai-modal').classList.remove('hidden'));
@@ -614,6 +624,7 @@ if (sendAiBtn) {
     });
 }
 
+// QIDIRUV VA FILTRLAR
 const searchInput = document.getElementById('search-input');
 const filterYear = document.getElementById('filter-academic-year');
 const filterCategory = document.getElementById('filter-category');
